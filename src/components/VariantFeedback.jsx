@@ -13,7 +13,7 @@
  */
 import { useState } from 'react';
 import { Button, Input, Radio, Space, Typography } from 'antd';
-import { CheckCircleOutlined } from '@ant-design/icons';
+import { CheckCircleOutlined, CheckOutlined } from '@ant-design/icons';
 import { useFeedback } from '../context/FeedbackContext';
 import TriStateGroup from './shared/TriStateGroup';
 
@@ -23,8 +23,8 @@ const { Text } = Typography;
 /* ── 静态配置 ──────────────────────────────────────────────────── */
 
 const TRISTATE_OPTIONS = [
-  { value: 'agree',     label: '✓ 同意',   activeType: 'agree' },
-  { value: 'disagree',  label: '✗ 不同意', activeType: 'disagree' },
+  { value: 'agree',     label: '✓ 正确',   activeType: 'agree' },
+  { value: 'disagree',  label: '✗ 有误', activeType: 'disagree' },
   { value: 'uncertain', label: '— 不确定', activeType: 'uncertain' },
 ];
 
@@ -38,8 +38,8 @@ const CLASSIFICATIONS = [
 const CLASS_LABEL = Object.fromEntries(CLASSIFICATIONS.map((c) => [c.value, c.label]));
 
 const VERDICT_TAG = {
-  agree:     { label: '同意' },
-  disagree:  { label: '不同意' },
+  agree:     { label: '正确' },
+  disagree:  { label: '有误' },
   uncertain: { label: '不确定' },
 };
 
@@ -75,7 +75,17 @@ function SubmittedBanner({ verdict, classification, reason, onModify }) {
       }}
     >
       <div style={{ display: 'flex', alignItems: 'center', gap: 6, minWidth: 0, flex: 1 }}>
-        <CheckCircleOutlined style={{ color: '#86efac', fontSize: 12, flexShrink: 0 }} />
+        <span
+            style={{
+              fontSize: 11,
+              color: '#94a3b8',
+              overflow: 'hidden',
+              textOverflow: 'ellipsis',
+              whiteSpace: 'nowrap',
+            }}
+          >
+            反馈结果：
+          </span>
         <span
           style={{
             ...pill,
@@ -98,7 +108,7 @@ function SubmittedBanner({ verdict, classification, reason, onModify }) {
               whiteSpace: 'nowrap',
             }}
           >
-            {summary}
+            修正分类：{summary}
           </span>
         )}
       </div>
@@ -195,7 +205,7 @@ export default function VariantFeedback({ variantId }) {
       {/* 问题 + 三态按钮 */}
       <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
         <Text style={{ fontSize: 13, color: '#64748b', flexShrink: 0 }}>
-          您是否同意该变异的致病性分类？
+          请评估该变异的致病性评级：
         </Text>
         <TriStateGroup
           value={verdict ?? null}
@@ -272,15 +282,22 @@ export default function VariantFeedback({ variantId }) {
 
       {/* 提交 / 取消（选了 verdict 才显示） */}
       {verdict && (
-        <div style={{ display: 'flex', gap: 8, marginTop: 12 }} className="fb-detail-enter">
-          <Button size="small" onClick={handleCancel}>取消</Button>
+        <div style={{ display: 'flex', justifyContent: 'flex-end', alignItems: 'center', gap: 12, marginTop: 30 }} className="fb-detail-enter">
           <Button
-            size="small"
+            type="text"
+            style={{ color: '#64748b', padding: '0 4px' }}
+            onClick={handleCancel}
+          >
+            取消
+          </Button>
+          <Button
             type="primary"
+            icon={<CheckOutlined />}
             disabled={!canSubmit}
             onClick={handleSubmit}
+            style={{ fontWeight: 600 }}
           >
-            提交
+            提交反馈
           </Button>
         </div>
       )}

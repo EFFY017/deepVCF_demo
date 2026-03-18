@@ -10,7 +10,7 @@
  */
 import { useState } from 'react';
 import { Button, Checkbox, Input, Space, Typography } from 'antd';
-import { CheckCircleOutlined } from '@ant-design/icons';
+import { CheckCircleOutlined, CheckOutlined } from '@ant-design/icons';
 import { useFeedback } from '../context/FeedbackContext';
 import TriStateGroup from './shared/TriStateGroup';
 
@@ -69,10 +69,20 @@ function SubmittedBanner({ verdict, issues, onModify }) {
       }}
     >
       <div style={{ display: 'flex', alignItems: 'center', gap: 6, minWidth: 0, flex: 1 }}>
-        <CheckCircleOutlined style={{ color: '#86efac', fontSize: 12, flexShrink: 0 }} />
+          <span
+            style={{
+              fontSize: 11,
+              color: '#94a3b8',
+              overflow: 'hidden',
+              textOverflow: 'ellipsis',
+              whiteSpace: 'nowrap',
+            }}
+          >
+            反馈结果：
+          </span>
         <span
           style={{
-            ...pill,
+             ...pill,
             fontSize: 11,
             padding: '0 6px',
             borderRadius: 3,
@@ -198,7 +208,7 @@ export default function EvidenceFeedback({ evidenceId }) {
       {/* 标签 + 二态按钮 */}
       <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
         <Text type="secondary" style={{ fontSize: 12, flexShrink: 0 }}>
-          对此证据的评估：
+          请评估此证据：
         </Text>
         <TriStateGroup
           value={verdict ?? null}
@@ -254,23 +264,36 @@ export default function EvidenceFeedback({ evidenceId }) {
 
       {/* 提交 / 取消（选了"有误"才显示） */}
       {verdict === 'wrong' && (
-        <div style={{ display: 'flex', gap: 8, marginTop: 12 }} className="fb-detail-enter">
-          <Button size="small" onClick={handleCancel}>取消</Button>
+        <div style={{ display: 'flex', justifyContent: 'flex-end', alignItems: 'center', gap: 12, marginTop: 16 }} className="fb-detail-enter">
           <Button
-            size="small"
+            type="text"
+            style={{ color: '#64748b', padding: '0 4px' }}
+            onClick={handleCancel}
+          >
+            取消
+          </Button>
+          <Button
             type="primary"
+            icon={<CheckOutlined />}
             disabled={!canSubmit}
             onClick={handleSubmit}
+            style={{ fontWeight: 600 }}
           >
-            提交
+            提交反馈
           </Button>
         </div>
       )}
 
       {/* 取消（选了"正确"处于修改态时也需要取消入口，实际不会发生因为正确会自动提交） */}
       {verdict === null && modifySnapshot !== null && (
-        <div style={{ display: 'flex', gap: 8, marginTop: 10 }}>
-          <Button size="small" onClick={handleCancel}>取消</Button>
+        <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: 10 }}>
+          <Button
+            type="text"
+            style={{ color: '#64748b', padding: '0 4px' }}
+            onClick={handleCancel}
+          >
+            取消
+          </Button>
         </div>
       )}
     </div>

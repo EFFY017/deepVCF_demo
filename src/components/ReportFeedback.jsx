@@ -10,7 +10,7 @@
  */
 import { useState } from 'react';
 import { Button, Card, Rate, Space, Typography, message } from 'antd';
-import { CheckCircleOutlined } from '@ant-design/icons';
+import { CheckCircleOutlined, CheckOutlined } from '@ant-design/icons';
 import { useFeedback } from '../context/FeedbackContext';
 
 const { Text, Title } = Typography;
@@ -203,19 +203,19 @@ export default function ReportFeedback() {
           </div>
 
           {/* Submit + Cancel */}
-          <div style={{ display: 'flex', gap: 8, marginTop: 16 }}>
+          <div style={{ display: 'flex', justifyContent: 'flex-end', alignItems: 'center', gap: 12, marginTop: 16 }}>
             <Button
-              size="large"
-              style={{ borderRadius: 12, height: 44, flex: 1 }}
+              type="text"
+              style={{ color: '#64748b', padding: '0 4px' }}
               onClick={handleCancel}
             >
               取消
             </Button>
             <Button
               type="primary"
-              size="large"
+              icon={<CheckOutlined />}
               disabled={!canSubmit}
-              style={{ borderRadius: 12, fontWeight: 600, height: 44, flex: 2 }}
+              style={{ fontWeight: 600 }}
               onClick={handleSubmit}
             >
               提交反馈

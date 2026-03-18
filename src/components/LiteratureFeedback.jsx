@@ -11,7 +11,7 @@
  */
 import { useState } from 'react';
 import { Button, Checkbox, Input, Space, Typography } from 'antd';
-import { LikeOutlined, LikeFilled, DislikeOutlined, DislikeFilled } from '@ant-design/icons';
+import { LikeOutlined, LikeFilled, DislikeOutlined, DislikeFilled, CheckOutlined } from '@ant-design/icons';
 import { useFeedback } from '../context/FeedbackContext';
 
 const { TextArea } = Input;
@@ -105,7 +105,6 @@ export default function LiteratureFeedback({ refId }) {
           ) : (
             <LikeOutlined style={{ fontSize: 13 }} />
           )}
-          <span style={{ fontSize: 12 }}>准确</span>
         </button>
 
         <button
@@ -132,35 +131,8 @@ export default function LiteratureFeedback({ refId }) {
           ) : (
             <DislikeOutlined style={{ fontSize: 13 }} />
           )}
-          <span style={{ fontSize: 12 }}>有误</span>
         </button>
       </div>
-
-      {/* 已提交 👎 时展示高亮原因标签 */}
-      {savedVerdict === 'down' && !formOpen && saved?.reasons?.length > 0 && (
-        <div style={{ marginTop: 6, display: 'flex', flexWrap: 'wrap', gap: 6 }}>
-          {saved.reasons.map((r) => (
-            <span
-              key={r}
-              style={{
-                background: '#fef2f2',
-                border: '1px solid #fca5a5',
-                color: '#991b1b',
-                borderRadius: 4,
-                padding: '1px 8px',
-                fontSize: 11,
-              }}
-            >
-              {REASON_LABEL[r]}
-            </span>
-          ))}
-          {saved.note && (
-            <span style={{ fontSize: 11, color: '#64748b', marginLeft: 4 }}>
-              补充：{saved.note}
-            </span>
-          )}
-        </div>
-      )}
 
       {/* 👎 原因面板 */}
       {formOpen && (
@@ -211,15 +183,22 @@ export default function LiteratureFeedback({ refId }) {
             />
           </div>
 
-          <div style={{ display: 'flex', gap: 8, marginTop: 10 }}>
-            <Button size="small" onClick={handleCancel}>取消</Button>
+          <div style={{ display: 'flex', justifyContent: 'flex-end', alignItems: 'center', gap: 12, marginTop: 16 }}>
             <Button
-              size="small"
+              type="text"
+              style={{ color: '#64748b', padding: '0 4px' }}
+              onClick={handleCancel}
+            >
+              取消
+            </Button>
+            <Button
               type="primary"
+              icon={<CheckOutlined />}
               disabled={!canSubmit}
               onClick={handleSubmit}
+              style={{ fontWeight: 600 }}
             >
-              提交
+              提交反馈
             </Button>
           </div>
         </div>
