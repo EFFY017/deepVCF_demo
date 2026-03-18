@@ -2,12 +2,15 @@
  * EvidenceFeedback — A层：证据级别反馈
  *
  * 状态机：
- *   initial  → 只展示三态按钮（左对齐），无按钮
- *   editing  → 三态按钮 + 详情展开 + 提交/取消（取消回 initial）
- *   submitted → 绿色高亮横条 + 反馈内容摘要 + 右侧"修改"按钮
+ *   initial   → 只展示二态按钮（正确/有误），无提交按钮
+ *   editing   → 选"有误"后展开问题多选 + 提交/取消
+ *   submitted → 绿色高亮横条 + 反馈摘要 + 右侧"修改"按钮
+ *
+ * 特别规则：选"正确"立即自动提交，无需额外点击。
  */
-import { Button, Checkbox, Input, Space, Tag, Typography } from 'antd';
-import { CheckCircleFilled } from '@ant-design/icons';
+import { useState } from 'react';
+import { Button, Checkbox, Input, Space, Typography } from 'antd';
+import { CheckCircleOutlined } from '@ant-design/icons';
 import { useFeedback } from '../context/FeedbackContext';
 import TriStateGroup from './shared/TriStateGroup';
 
@@ -17,88 +20,90 @@ const { Text } = Typography;
 /* ── 静态配置 ──────────────────────────────────────────────────── */
 
 const ISSUE_OPTIONS = [
-  { label: '证据强度判定有误（如该 Moderate 标成了 Strong）', value: 'strength' },
-  { label: '引用文献不相关', value: 'irrelevant' },
-  { label: '文献相关但内容解读有误', value: 'misread' },
-  { label: '该证据不应被采用', value: 'invalid' },
+  { label: '证据强度有误', value: 'wrong_strength' },
+  { label: '证据引用的文献不相关', value: 'irrelevant_literature' },
+  { label: '文献相关，但对文献内容的解读有误', value: 'misinterpretation' },
+  { label: '该证据不应被采用', value: 'should_not_apply' },
+  { label: '其他', value: 'other' },
 ];
 
-const ISSUE_LABEL = {
-  strength:   '证据强度判定有误',
-  irrelevant: '引用文献不相关',
-  misread:    '文献相关但内容解读有误',
-  invalid:    '该证据不应被采用',
-};
+const ISSUE_LABEL = Object.fromEntries(ISSUE_OPTIONS.map((o) => [o.value, o.label]));
 
-const TRISTATE_OPTIONS = [
-  { value: 'correct',   label: '✓ 正确',   activeType: 'correct' },
-  { value: 'wrong',     label: '✗ 有误',   activeType: 'wrong' },
-  { value: 'uncertain', label: '➖ 不确定', activeType: 'uncertain' },
+const BINARY_OPTIONS = [
+  { value: 'correct', label: '✓ 正确', activeType: 'correct' },
+  { value: 'wrong',   label: '✗ 有误', activeType: 'wrong' },
 ];
 
 const VERDICT_TAG = {
-  correct:   { label: '✓ 正确',   color: '#22c55e', bg: '#dcfce7', text: '#166534' },
-  wrong:     { label: '✗ 有误',   color: '#dc2626', bg: '#fee2e2', text: '#991b1b' },
-  uncertain: { label: '➖ 不确定', color: '#94a3b8', bg: '#f1f5f9', text: '#475569' },
+  correct: { label: '正确' },
+  wrong:   { label: '有误' },
 };
 
-/* ── 已提交高亮横条 ─────────────────────────────────────────────── */
+const PILL_STYLE = {
+  correct: { border: '1px solid #bbf7d0', color: '#15803d', background: '#f0fdf4' },
+  wrong:   { border: '1px solid #fecaca', color: '#b91c1c', background: '#fef2f2' },
+};
 
-function SubmittedBanner({ verdict, issues, note, pmid, onModify }) {
-  const tag = VERDICT_TAG[verdict];
+/* ── 已提交行（极简） ────────────────────────────────────────── */
+
+function SubmittedBanner({ verdict, issues, onModify }) {
+  const pill = PILL_STYLE[verdict] ?? {};
+
+  // 有误时构建摘要：第一项 + 超出数量
+  let summary = null;
+  if (verdict === 'wrong' && issues.length > 0) {
+    const firstName = ISSUE_LABEL[issues[0]];
+    summary = issues.length > 1 ? `${firstName} 等 ${issues.length} 项` : firstName;
+  }
 
   return (
-    <div>
-      <div
-        style={{
-          display: 'flex',
-          alignItems: 'flex-start',
-          justifyContent: 'space-between',
-          background: '#f0fdf4',
-          border: '1px solid #bbf7d0',
-          borderRadius: 8,
-          padding: '10px 14px',
-          gap: 12,
-        }}
-      >
-        {/* 左侧：图标 + 主文字 + 反馈内容 */}
-        <div style={{ flex: 1, minWidth: 0 }}>
-          {/* 主行 */}
-          <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
-            <CheckCircleFilled style={{ color: '#22c55e', fontSize: 15, flexShrink: 0 }} />
-            <Text strong style={{ color: '#15803d', fontSize: 13 }}>
-              反馈已记录，感谢您的校准
-            </Text>
-          </div>
-
-          {/* 详情摘要（仅 wrong 时） */}
-          {verdict === 'wrong' && (issues.length > 0 || note || pmid) && (
-            <div style={{ marginTop: 6, paddingLeft: 23, fontSize: 12, color: '#64748b', lineHeight: 1.8 }}>
-              {tag && <div>反馈类型：{tag.label}</div>}
-              {issues.length > 0 && (
-                <div>
-                  问题类型：
-                  {issues.map((v) => (             
-                      ISSUE_LABEL[v]                   
-                  ))}
-                </div>
-              )}
-              {note && <div>补充说明：{note}</div>}
-              {pmid && <div>PMID：<span style={{ fontFamily: 'monospace' }}>{pmid}</span></div>}
-            </div>
-          )}
-        </div>
-
-        {/* 右侧：修改链接 */}
-        <Button
-          type="link"
-          size="small"
-          style={{ color: '#16a34a', padding: 0, flexShrink: 0, fontWeight: 500 }}
-          onClick={onModify}
+    <div
+      style={{
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'space-between',
+        paddingTop: 8,
+        marginTop: 8,
+        borderTop: '1px solid #f1f5f9',
+        gap: 8,
+      }}
+    >
+      <div style={{ display: 'flex', alignItems: 'center', gap: 6, minWidth: 0, flex: 1 }}>
+        <CheckCircleOutlined style={{ color: '#86efac', fontSize: 12, flexShrink: 0 }} />
+        <span
+          style={{
+            ...pill,
+            fontSize: 11,
+            padding: '0 6px',
+            borderRadius: 3,
+            lineHeight: '18px',
+            whiteSpace: 'nowrap',
+          }}
         >
-          修改
-        </Button>
+          {VERDICT_TAG[verdict]?.label}
+        </span>
+        {summary && (
+          <span
+            style={{
+              fontSize: 11,
+              color: '#94a3b8',
+              overflow: 'hidden',
+              textOverflow: 'ellipsis',
+              whiteSpace: 'nowrap',
+            }}
+          >
+            {summary}
+          </span>
+        )}
       </div>
+      <Button
+        type="text"
+        size="small"
+        style={{ color: '#94a3b8', fontSize: 12, padding: '0 4px', height: 'auto', flexShrink: 0 }}
+        onClick={onModify}
+      >
+        修改
+      </Button>
     </div>
   );
 }
@@ -116,42 +121,65 @@ export default function EvidenceFeedback({ evidenceId }) {
     unsubmitEvidenceFeedback,
   } = useFeedback();
 
-  const fb      = evidenceFeedback[evidenceId] ?? {};
-  const { verdict, issues = [], note = '', pmid = '' } = fb;
+  // Snapshot saved when entering modify mode, used to restore on cancel
+  const [modifySnapshot, setModifySnapshot] = useState(null);
+
+  const fb = evidenceFeedback[evidenceId] ?? {};
+  const { verdict, issues = [], note = '' } = fb;
   const isSubmitted = evidenceSubmitted[evidenceId] ?? false;
 
   /* ── 操作 ────────────────────────────────────────────────────── */
 
-  // 提交：标记为已提交
-  const handleSubmit = () => submitEvidenceFeedback(evidenceId);
+  const handleVerdictChange = (v) => {
+    if (v === 'correct') {
+      // 正确：直接记录，立即提交
+      setEvidenceFeedback(evidenceId, 'correct');
+      submitEvidenceFeedback(evidenceId);
+      setModifySnapshot(null);
+    } else {
+      // 'wrong' 或 null（取消选中）
+      setEvidenceFeedback(evidenceId, v);
+    }
+  };
 
-  // 取消：清空所有内容，回到 initial
-  const handleCancel = () => clearEvidenceFeedback(evidenceId);
+  const canSubmit = verdict === 'wrong' && issues.length > 0;
 
-  // 修改：退回编辑态（值保留）
-  const handleModify = () => unsubmitEvidenceFeedback(evidenceId);
+  const handleSubmit = () => {
+    submitEvidenceFeedback(evidenceId);
+    setModifySnapshot(null);
+  };
+
+  const handleCancel = () => {
+    if (modifySnapshot !== null) {
+      // 修改模式下取消：恢复上次提交的内容
+      updateEvidenceFeedback(evidenceId, {
+        verdict: modifySnapshot.verdict,
+        issues: modifySnapshot.issues ?? [],
+        note: modifySnapshot.note ?? '',
+      });
+      submitEvidenceFeedback(evidenceId);
+      setModifySnapshot(null);
+    } else {
+      // 初始编辑取消：清空所有内容
+      clearEvidenceFeedback(evidenceId);
+    }
+  };
+
+  const handleModify = () => {
+    setModifySnapshot({ verdict, issues: [...issues], note });
+    unsubmitEvidenceFeedback(evidenceId);
+  };
 
   /* ── 渲染：已提交 ─────────────────────────────────────────────── */
 
   if (isSubmitted) {
     return (
-      <div
-        style={{
-          background: '#fff',
-          border: '1px solid #e2e8f0',
-          borderRadius: 8,
-          padding: '14px 16px',
-          marginTop: 12,
-        }}
-      >
-        <SubmittedBanner
-          verdict={verdict}
-          issues={issues}
-          note={note}
-          pmid={pmid}
-          onModify={handleModify}
-        />
-      </div>
+      <SubmittedBanner
+        verdict={verdict}
+        issues={issues}
+        note={note}
+        onModify={handleModify}
+      />
     );
   }
 
@@ -167,15 +195,15 @@ export default function EvidenceFeedback({ evidenceId }) {
         marginTop: 12,
       }}
     >
-      {/* 标签 + 三态按钮（左对齐） */}
-      <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+      {/* 标签 + 二态按钮 */}
+      <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
         <Text type="secondary" style={{ fontSize: 12, flexShrink: 0 }}>
           对此证据的评估：
         </Text>
         <TriStateGroup
           value={verdict ?? null}
-          onChange={(v) => setEvidenceFeedback(evidenceId, v)}
-          options={TRISTATE_OPTIONS}
+          onChange={handleVerdictChange}
+          options={BINARY_OPTIONS}
         />
       </div>
 
@@ -189,7 +217,7 @@ export default function EvidenceFeedback({ evidenceId }) {
         >
           <div>
             <Text type="secondary" style={{ fontSize: 12, display: 'block', marginBottom: 6 }}>
-              问题类型（可多选）
+              问题类型（可多选，至少选一项）<span style={{ color: '#dc2626' }}>*</span>
             </Text>
             <Checkbox.Group
               value={issues}
@@ -205,36 +233,44 @@ export default function EvidenceFeedback({ evidenceId }) {
             </Checkbox.Group>
           </div>
 
-          <div>
-            <Text type="secondary" style={{ fontSize: 12, display: 'block', marginBottom: 4 }}>
-              补充说明（选填）
-            </Text>
-            <TextArea
-              rows={2}
-              placeholder="请描述具体问题..."
-              value={note}
-              onChange={(e) => updateEvidenceFeedback(evidenceId, { note: e.target.value })}
-            />
-          </div>
-
-          <div>
-            <Text type="secondary" style={{ fontSize: 12, display: 'block', marginBottom: 4 }}>
-              补充 PMID（选填）
-            </Text>
-            <Input
-              placeholder="如: 12345678, 87654321"
-              value={pmid}
-              onChange={(e) => updateEvidenceFeedback(evidenceId, { pmid: e.target.value })}
-            />
-          </div>
+          {/* 仅当选了"其他"时展示文本输入 */}
+          {issues.includes('other') && (
+            <div>
+              <Text type="secondary" style={{ fontSize: 12, display: 'block', marginBottom: 4 }}>
+                补充说明（选填，限 1000 字符）
+              </Text>
+              <TextArea
+                rows={2}
+                maxLength={1000}
+                showCount
+                placeholder="请描述具体问题..."
+                value={note}
+                onChange={(e) => updateEvidenceFeedback(evidenceId, { note: e.target.value })}
+              />
+            </div>
+          )}
         </Space>
       )}
 
-      {/* 提交 / 取消（选了 verdict 才显示） */}
-      {verdict !== null && (
-        <div style={{ display: 'flex', gap: 8, marginTop: 10 }} className="fb-detail-enter">
+      {/* 提交 / 取消（选了"有误"才显示） */}
+      {verdict === 'wrong' && (
+        <div style={{ display: 'flex', gap: 8, marginTop: 12 }} className="fb-detail-enter">
           <Button size="small" onClick={handleCancel}>取消</Button>
-          <Button size="small" type="primary" onClick={handleSubmit}>提交</Button>
+          <Button
+            size="small"
+            type="primary"
+            disabled={!canSubmit}
+            onClick={handleSubmit}
+          >
+            提交
+          </Button>
+        </div>
+      )}
+
+      {/* 取消（选了"正确"处于修改态时也需要取消入口，实际不会发生因为正确会自动提交） */}
+      {verdict === null && modifySnapshot !== null && (
+        <div style={{ display: 'flex', gap: 8, marginTop: 10 }}>
+          <Button size="small" onClick={handleCancel}>取消</Button>
         </div>
       )}
     </div>

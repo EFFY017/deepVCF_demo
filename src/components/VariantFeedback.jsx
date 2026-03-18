@@ -2,12 +2,18 @@
  * VariantFeedback — B层：变异级别反馈
  *
  * 状态机：
- *   initial  → 只展示问题 + 三态按钮（左对齐），无按钮
- *   editing  → 三态按钮 + 详情展开 + 提交/取消（取消回 initial）
- *   submitted → 绿色高亮横条 + 反馈内容摘要 + 右侧"修改"按钮
+ *   initial   → 问题 + 三态按钮，无提交按钮
+ *   editing   → 三态按钮 + 详情展开 + 提交/取消
+ *   submitted → 绿色高亮横条 + 反馈摘要 + 右侧"修改"按钮
+ *
+ * 二级字段：
+ *   agree     → 无，提交按钮立即可用
+ *   disagree  → 致病评级（必填）+ 简要理由（选填）
+ *   uncertain → 补充说明（选填，限 1000 字符）
  */
-import { Button, Input, Radio, Space, Tag, Typography } from 'antd';
-import { CheckCircleFilled } from '@ant-design/icons';
+import { useState } from 'react';
+import { Button, Input, Radio, Space, Typography } from 'antd';
+import { CheckCircleOutlined } from '@ant-design/icons';
 import { useFeedback } from '../context/FeedbackContext';
 import TriStateGroup from './shared/TriStateGroup';
 
@@ -32,65 +38,78 @@ const CLASSIFICATIONS = [
 const CLASS_LABEL = Object.fromEntries(CLASSIFICATIONS.map((c) => [c.value, c.label]));
 
 const VERDICT_TAG = {
-  agree:     { label: '✓ 同意',   bg: '#dcfce7', text: '#166534' },
-  disagree:  { label: '✗ 不同意', bg: '#fee2e2', text: '#991b1b' },
-  uncertain: { label: '— 不确定', bg: '#f1f5f9', text: '#475569' },
+  agree:     { label: '同意' },
+  disagree:  { label: '不同意' },
+  uncertain: { label: '不确定' },
 };
 
-/* ── 已提交高亮横条 ─────────────────────────────────────────────── */
+const PILL_STYLE = {
+  agree:     { border: '1px solid #bbf7d0', color: '#15803d', background: '#f0fdf4' },
+  disagree:  { border: '1px solid #fecaca', color: '#b91c1c', background: '#fef2f2' },
+  uncertain: { border: '1px solid #e2e8f0', color: '#475569', background: '#f8fafc' },
+};
+
+/* ── 已提交行（极简） ────────────────────────────────────────── */
 
 function SubmittedBanner({ verdict, classification, reason, onModify }) {
-  const tag = VERDICT_TAG[verdict];
+  const pill = PILL_STYLE[verdict] ?? {};
+
+  // 构建摘要：disagree 显示所选分类，uncertain 显示补充说明（截断）
+  let summary = null;
+  if (verdict === 'disagree' && classification) {
+    summary = CLASS_LABEL[classification];
+  } else if (verdict === 'uncertain' && reason) {
+    summary = reason.length > 20 ? reason.slice(0, 20) + '…' : reason;
+  }
 
   return (
-    <div>
-      <div
-        style={{
-          display: 'flex',
-          alignItems: 'flex-start',
-          justifyContent: 'space-between',
-          background: '#f0fdf4',
-          border: '1px solid #bbf7d0',
-          borderRadius: 8,
-          padding: '10px 14px',
-          gap: 12,
-        }}
-      >
-        {/* 左侧：图标 + 主文字 + 反馈内容 */}
-        <div style={{ flex: 1, minWidth: 0 }}>
-          {/* 主行 */}
-          <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
-            <CheckCircleFilled style={{ color: '#22c55e', fontSize: 15, flexShrink: 0 }} />
-            <Text strong style={{ color: '#15803d', fontSize: 13 }}>
-              反馈已记录，感谢您的校准
-            </Text>
-          </div>
-
-          {/* 详情摘要（仅 disagree 时） */}
-          {verdict === 'disagree' && (classification || reason) && (
-            <div style={{ marginTop: 6, paddingLeft: 23, fontSize: 12, color: '#64748b', lineHeight: 1.8 }}>
-              {tag && <div>反馈类型：{tag.label}</div>}
-              {classification && (
-                <div>
-                  正确分类：
-                  {CLASS_LABEL[classification]}
-                </div>
-              )}
-              {reason && <div>理由：{reason}</div>}
-            </div>
-          )}
-        </div>
-
-        {/* 右侧：修改链接 */}
-        <Button
-          type="link"
-          size="small"
-          style={{ color: '#16a34a', padding: 0, flexShrink: 0, fontWeight: 500 }}
-          onClick={onModify}
+    <div
+      style={{
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'space-between',
+        paddingTop: 8,
+        marginTop: 4,
+        borderTop: '1px solid #f1f5f9',
+        gap: 8,
+      }}
+    >
+      <div style={{ display: 'flex', alignItems: 'center', gap: 6, minWidth: 0, flex: 1 }}>
+        <CheckCircleOutlined style={{ color: '#86efac', fontSize: 12, flexShrink: 0 }} />
+        <span
+          style={{
+            ...pill,
+            fontSize: 11,
+            padding: '0 6px',
+            borderRadius: 3,
+            lineHeight: '18px',
+            whiteSpace: 'nowrap',
+          }}
         >
-          修改
-        </Button>
+          {VERDICT_TAG[verdict]?.label}
+        </span>
+        {summary && (
+          <span
+            style={{
+              fontSize: 11,
+              color: '#94a3b8',
+              overflow: 'hidden',
+              textOverflow: 'ellipsis',
+              whiteSpace: 'nowrap',
+            }}
+          >
+            {summary}
+          </span>
+        )}
       </div>
+      <Button
+        type="text"
+        size="small"
+        style={{ color: '#94a3b8', fontSize: 12, padding: '0 4px', height: 'auto', flexShrink: 0 }}
+        onClick={onModify}
+      >
+        修改
+      </Button>
     </div>
   );
 }
@@ -108,36 +127,56 @@ export default function VariantFeedback({ variantId }) {
     unsubmitVariantFeedback,
   } = useFeedback();
 
-  const fb      = variantFeedback[variantId] ?? {};
+  // Snapshot for cancel-in-modify behavior
+  const [modifySnapshot, setModifySnapshot] = useState(null);
+
+  const fb = variantFeedback[variantId] ?? {};
   const { verdict, classification = '', reason = '' } = fb;
   const isSubmitted = variantSubmitted[variantId] ?? false;
 
+  /* ── 提交按钮可用性 ───────────────────────────────────────────── */
+
+  const canSubmit =
+    verdict === 'agree' ||
+    verdict === 'uncertain' ||
+    (verdict === 'disagree' && !!classification);
+
   /* ── 操作 ────────────────────────────────────────────────────── */
 
-  const handleSubmit = () => submitVariantFeedback(variantId);
-  const handleCancel = () => clearVariantFeedback(variantId);
-  const handleModify = () => unsubmitVariantFeedback(variantId);
+  const handleSubmit = () => {
+    submitVariantFeedback(variantId);
+    setModifySnapshot(null);
+  };
+
+  const handleCancel = () => {
+    if (modifySnapshot !== null) {
+      updateVariantFeedback(variantId, {
+        verdict: modifySnapshot.verdict,
+        classification: modifySnapshot.classification ?? '',
+        reason: modifySnapshot.reason ?? '',
+      });
+      submitVariantFeedback(variantId);
+      setModifySnapshot(null);
+    } else {
+      clearVariantFeedback(variantId);
+    }
+  };
+
+  const handleModify = () => {
+    setModifySnapshot({ verdict, classification, reason });
+    unsubmitVariantFeedback(variantId);
+  };
 
   /* ── 渲染：已提交 ─────────────────────────────────────────────── */
 
   if (isSubmitted) {
     return (
-      <div
-        style={{
-          background: '#fff',
-          border: '1px solid #e2e8f0',
-          borderRadius: 8,
-          padding: '14px 16px',
-          marginTop: 4,
-        }}
-      >
-        <SubmittedBanner
-          verdict={verdict}
-          classification={classification}
-          reason={reason}
-          onModify={handleModify}
-        />
-      </div>
+      <SubmittedBanner
+        verdict={verdict}
+        classification={classification}
+        reason={reason}
+        onModify={handleModify}
+      />
     );
   }
 
@@ -153,8 +192,8 @@ export default function VariantFeedback({ variantId }) {
         marginTop: 4,
       }}
     >
-      {/* 问题 + 三态按钮（左对齐） */}
-      <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+      {/* 问题 + 三态按钮 */}
+      <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
         <Text style={{ fontSize: 13, color: '#64748b', flexShrink: 0 }}>
           您是否同意该变异的致病性分类？
         </Text>
@@ -165,7 +204,7 @@ export default function VariantFeedback({ variantId }) {
         />
       </div>
 
-      {/* 展开详情（选"不同意"时） */}
+      {/* disagree：致病评级（必填）+ 理由（选填） */}
       {verdict === 'disagree' && (
         <Space
           direction="vertical"
@@ -193,10 +232,12 @@ export default function VariantFeedback({ variantId }) {
 
           <div>
             <Text type="secondary" style={{ fontSize: 12, display: 'block', marginBottom: 4 }}>
-              简要理由（选填）
+              简要理由（选填，限 1000 字符）
             </Text>
             <TextArea
               rows={2}
+              maxLength={1000}
+              showCount
               placeholder="请简要说明您不同意的理由..."
               value={reason}
               onChange={(e) => updateVariantFeedback(variantId, { reason: e.target.value })}
@@ -205,11 +246,42 @@ export default function VariantFeedback({ variantId }) {
         </Space>
       )}
 
+      {/* uncertain：补充说明（选填） */}
+      {verdict === 'uncertain' && (
+        <Space
+          direction="vertical"
+          size={10}
+          style={{ marginTop: 12, width: '100%' }}
+          className="fb-detail-enter"
+        >
+          <div>
+            <Text type="secondary" style={{ fontSize: 12, display: 'block', marginBottom: 4 }}>
+              补充说明（选填，限 1000 字符）
+            </Text>
+            <TextArea
+              rows={2}
+              maxLength={1000}
+              showCount
+              placeholder="请描述您的不确定原因..."
+              value={reason}
+              onChange={(e) => updateVariantFeedback(variantId, { reason: e.target.value })}
+            />
+          </div>
+        </Space>
+      )}
+
       {/* 提交 / 取消（选了 verdict 才显示） */}
-      {verdict !== null && (
-        <div style={{ display: 'flex', gap: 8, marginTop: 10 }} className="fb-detail-enter">
+      {verdict && (
+        <div style={{ display: 'flex', gap: 8, marginTop: 12 }} className="fb-detail-enter">
           <Button size="small" onClick={handleCancel}>取消</Button>
-          <Button size="small" type="primary" onClick={handleSubmit}>提交</Button>
+          <Button
+            size="small"
+            type="primary"
+            disabled={!canSubmit}
+            onClick={handleSubmit}
+          >
+            提交
+          </Button>
         </div>
       )}
     </div>

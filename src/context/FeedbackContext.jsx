@@ -92,6 +92,21 @@ export function FeedbackProvider({ children }) {
     setVariantSubmitted(prev => ({ ...prev, [id]: false }));
   };
 
+  // Lit-layer: per-literature feedback data
+  const [literatureFeedback, setLiteratureFeedbackMap] = useState({});
+
+  const setLiteratureFeedback = (refId, data) => {
+    setLiteratureFeedbackMap(prev => ({ ...prev, [refId]: data }));
+  };
+
+  const clearLiteratureFeedback = (refId) => {
+    setLiteratureFeedbackMap(prev => {
+      const next = { ...prev };
+      delete next[refId];
+      return next;
+    });
+  };
+
   // Count evidence items that have been submitted
   const annotatedCount = Object.values(evidenceSubmitted).filter(Boolean).length;
   const totalEvidence = 8;
@@ -122,6 +137,10 @@ export function FeedbackProvider({ children }) {
         setComment,
         submitted,
         setSubmitted,
+        // Lit-layer
+        literatureFeedback,
+        setLiteratureFeedback,
+        clearLiteratureFeedback,
         // Progress
         annotatedCount,
         totalEvidence,

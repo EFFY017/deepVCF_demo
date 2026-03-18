@@ -14,7 +14,6 @@ import PatientInfoCard from './components/PatientInfoCard';
 import VariantSummaryTable from './components/VariantSummaryTable';
 import VariantDetailCard from './components/VariantDetailCard';
 import ReportFeedback from './components/ReportFeedback';
-import FloatingFeedback from './components/FloatingFeedback';
 
 const { Title, Text, Paragraph } = Typography;
 
@@ -88,7 +87,6 @@ export default function App() {
           <ConclusionCard />
           <ReportFeedback />
         </div>
-        <FloatingFeedback />
       </div>
     </FeedbackProvider>
   );

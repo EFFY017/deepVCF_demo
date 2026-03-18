@@ -9,6 +9,7 @@ import { Badge, Card, Collapse, Space, Tag, Typography } from 'antd';
 import { LinkOutlined } from '@ant-design/icons';
 import { useFeedback } from '../context/FeedbackContext';
 import EvidenceFeedback from './EvidenceFeedback';
+import LiteratureFeedback from './LiteratureFeedback';
 
 // Note: In production import Collapse, Card, Tag from '@onex/ui'
 
@@ -21,7 +22,7 @@ const DOT_COLOR = {
 };
 
 /** Reference card with yellow background */
-function RefCard({ url, desc }) {
+function RefCard({ url, desc, refId }) {
   return (
     <Card className="ref-card" size="small" bordered={false}>
       <div className="ref-card-title">
@@ -45,6 +46,7 @@ function RefCard({ url, desc }) {
           {desc}
         </Text>
       )}
+      {refId && <LiteratureFeedback refId={refId} />}
     </Card>
   );
 }
@@ -104,7 +106,7 @@ export default function EvidenceItem({ evidence, isPathogenic = true }) {
       )}
 
       {evidence.refs?.map((ref, i) => (
-        <RefCard key={i} url={ref.url} desc={ref.desc} />
+        <RefCard key={i} url={ref.url} desc={ref.desc} refId={`${evidence.id}-ref-${i}`} />
       ))}
 
       {/* A-layer feedback */}

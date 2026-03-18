@@ -1,22 +1,23 @@
 /**
  * ReportFeedback — C层：报告级别反馈（整体反馈卡片）
  *
- * 内容（按原型最终版）：
- *   - 关键能力评分：变异位点发现能力 / 文献检索相关性 / 文献理解与证据提取质量（Rate，选填）
- *   - 补充反馈：自由文本（选填）
- *   - 提交反馈按钮
+ * 状态机：
+ *   editing   → 文本框 + 关键能力评分；提交按钮在文本框非空时高亮；含取消按钮
+ *   submitted → "您的反馈已提交" 横条 + "修改"按钮
+ *
+ * 修改流程：
+ *   点击修改 → 回到编辑态，回填上次内容；取消 → 恢复上次提交内容；提交 → 覆盖
  */
+import { useState } from 'react';
 import { Button, Card, Rate, Space, Typography, message } from 'antd';
-import { CheckCircleFilled } from '@ant-design/icons';
+import { CheckCircleOutlined } from '@ant-design/icons';
 import { useFeedback } from '../context/FeedbackContext';
-
-// Note: In production import Card, Rate, Button from '@onex/ui'
 
 const { Text, Title } = Typography;
 
 const RATING_ITEMS = [
-  { key: 'variant', label: '变异位点发现能力' },
-  { key: 'literature', label: '文献检索相关性' },
+  { key: 'variant',       label: '变异位点发现能力' },
+  { key: 'literature',    label: '文献检索相关性' },
   { key: 'evidenceQuality', label: '文献理解与证据提取质量' },
 ];
 
@@ -40,22 +41,86 @@ export default function ReportFeedback() {
   const { ratings, setRatings, comment, setComment, submitted, setSubmitted } =
     useFeedback();
 
+  // Track whether we're in "modify" mode and store snapshot for cancel
+  const [isModifying, setIsModifying] = useState(false);
+  const [modifySnapshot, setModifySnapshot] = useState(null);
+
+  const canSubmit = comment.trim().length > 0;
+
   const handleSubmit = () => {
     setSubmitted(true);
+    setIsModifying(false);
+    setModifySnapshot(null);
     message.success({
       content: '反馈已提交！感谢您的专业评估，您的反馈将帮助我们持续优化 AI 诊断质量。',
       duration: 4,
-      icon: <CheckCircleFilled style={{ color: '#22c55e' }} />,
+      icon: <CheckCircleOutlined style={{ color: '#22c55e' }} />,
     });
   };
 
+  const handleCancel = () => {
+    if (isModifying && modifySnapshot !== null) {
+      // 修改模式取消：恢复上次提交内容
+      setComment(modifySnapshot.comment);
+      setRatings(modifySnapshot.ratings);
+      setSubmitted(true);
+      setIsModifying(false);
+      setModifySnapshot(null);
+    } else {
+      // 初始编辑取消：清空内容
+      setComment('');
+    }
+  };
+
+  const handleModify = () => {
+    setModifySnapshot({ comment, ratings: { ...ratings } });
+    setSubmitted(false);
+    setIsModifying(true);
+  };
+
+  /* ── 已提交状态 ──────────────────────────────────────────────── */
+
+  if (submitted) {
+    return (
+      <div id="report-feedback-section">
+        <Card style={{ marginBottom: 80 }} bodyStyle={{ padding: 0 }} bordered>
+          <div className="report-feedback-header">
+            <Title level={5} style={{ color: '#1e3a8a', margin: 0 }}>
+              整体反馈
+            </Title>
+          </div>
+          <div
+            style={{
+              padding: '12px 20px',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'space-between',
+              gap: 8,
+            }}
+          >
+            <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+              <CheckCircleOutlined style={{ fontSize: 13, color: '#86efac' }} />
+              <Text style={{ fontSize: 13, color: '#94a3b8' }}>已记录整体反馈</Text>
+            </div>
+            <Button
+              type="text"
+              size="small"
+              style={{ color: '#94a3b8', fontSize: 12, padding: '0 4px', height: 'auto' }}
+              onClick={handleModify}
+            >
+              修改
+            </Button>
+          </div>
+        </Card>
+      </div>
+    );
+  }
+
+  /* ── 编辑态 ──────────────────────────────────────────────────── */
+
   return (
     <div id="report-feedback-section">
-      <Card
-        style={{ marginBottom: 80 }}
-        bodyStyle={{ padding: 0 }}
-        bordered
-      >
+      <Card style={{ marginBottom: 80 }} bodyStyle={{ padding: 0 }} bordered>
         {/* Header */}
         <div className="report-feedback-header">
           <Title level={5} style={{ color: '#1e3a8a', margin: 0 }}>
@@ -67,7 +132,7 @@ export default function ReportFeedback() {
         </div>
 
         <div style={{ padding: 20 }}>
-          {/* Block: Capability rating */}
+          {/* Block: Capability rating
           <div
             style={{
               marginBottom: 24,
@@ -83,9 +148,7 @@ export default function ReportFeedback() {
             <Space direction="vertical" size={14} style={{ width: '100%' }}>
               {RATING_ITEMS.map((item) => (
                 <div key={item.key} className="star-rating-row">
-                  <Text style={{ fontSize: 13, color: '#374151' }}>
-                    {item.label}
-                  </Text>
+                  <Text style={{ fontSize: 13, color: '#374151' }}>{item.label}</Text>
                   <Rate
                     value={ratings[item.key]}
                     onChange={(val) =>
@@ -95,16 +158,13 @@ export default function ReportFeedback() {
                 </div>
               ))}
             </Space>
-          </div>
+          </div> */}
 
-          {/* Block: Additional comment */}
+          {/* Block: Free text */}
           <div style={{ marginBottom: 0 }}>
             <Text strong style={{ fontSize: 14, display: 'block', marginBottom: 6 }}>
               补充反馈
               <OptionalTag />
-            </Text>
-            <Text type="secondary" style={{ fontSize: 13, display: 'block', marginBottom: 10 }}>
-              请在此描述
             </Text>
             <textarea
               style={{
@@ -119,9 +179,11 @@ export default function ReportFeedback() {
                 resize: 'vertical',
                 outline: 'none',
                 lineHeight: 1.6,
+                boxSizing: 'border-box',
               }}
               rows={3}
-              placeholder="例：test2 的文献引用正确但对特定段落的理解有误..."
+              maxLength={2000}
+              placeholder="请补充您的其他反馈"
               value={comment}
               onChange={(e) => setComment(e.target.value)}
               onFocus={(e) => {
@@ -135,39 +197,30 @@ export default function ReportFeedback() {
                 e.target.style.background = '#f8fafc';
               }}
             />
+            <div style={{ textAlign: 'right', fontSize: 11, color: '#94a3b8', marginTop: 2 }}>
+              {comment.length} / 2000
+            </div>
           </div>
 
-          {/* Submit */}
-          {submitted ? (
-            <div
-              style={{
-                marginTop: 16,
-                background: '#dcfce7',
-                border: '1px solid #86efac',
-                borderRadius: 8,
-                padding: '12px 16px',
-                display: 'flex',
-                alignItems: 'center',
-                gap: 10,
-                fontWeight: 600,
-                color: '#166534',
-                fontSize: 14,
-              }}
+          {/* Submit + Cancel */}
+          <div style={{ display: 'flex', gap: 8, marginTop: 16 }}>
+            <Button
+              size="large"
+              style={{ borderRadius: 12, height: 44, flex: 1 }}
+              onClick={handleCancel}
             >
-              <CheckCircleFilled style={{ fontSize: 18 }} />
-              反馈已提交！感谢您的专业评估。
-            </div>
-          ) : (
+              取消
+            </Button>
             <Button
               type="primary"
               size="large"
-              block
-              style={{ marginTop: 16, borderRadius: 12, fontWeight: 600, height: 44 }}
+              disabled={!canSubmit}
+              style={{ borderRadius: 12, fontWeight: 600, height: 44, flex: 2 }}
               onClick={handleSubmit}
             >
               提交反馈
             </Button>
-          )}
+          </div>
         </div>
       </Card>
     </div>
